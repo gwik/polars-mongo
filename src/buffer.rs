@@ -28,7 +28,7 @@ pub(crate) fn init_buffers(
                 DataType::Date => Buffer::Date(PrimitiveChunkedBuilder::new(name, capacity)),
                 _ => Buffer::All((Vec::with_capacity(capacity), name)),
             };
-            Ok((name.clone(), builder))
+            Ok((name.to_string(), builder))
         })
         .collect()
 }

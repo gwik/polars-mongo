@@ -73,7 +73,7 @@ impl<'a> From<Bson> for Wrap<AnyValue<'a>> {
     fn from(bson: Bson) -> Self {
         let dt = match bson {
             Bson::Double(v) => AnyValue::Float64(v),
-            Bson::String(v) => AnyValue::Utf8Owned(v),
+            Bson::String(v) => AnyValue::Utf8Owned(v.into()),
             Bson::Array(arr) => {
                 let vals: Vec<Wrap<AnyValue>> = arr.iter().map(|v| v.into()).collect();
                 // Wrap is transparent, so this is safe
@@ -85,7 +85,7 @@ impl<'a> From<Bson> for Wrap<AnyValue<'a>> {
             Bson::Null | Bson::Undefined => AnyValue::Null,
             Bson::Int32(v) => AnyValue::Int32(v),
             Bson::Int64(v) => AnyValue::Int64(v),
-            Bson::Timestamp(v) => AnyValue::Utf8Owned(format!("{:#?}", v)),
+            Bson::Timestamp(v) => AnyValue::Utf8Owned(format!("{:#?}", v).into()),
             Bson::DateTime(dt) => {
                 AnyValue::Datetime(dt.timestamp_millis(), TimeUnit::Milliseconds, &None)
             }
@@ -93,9 +93,9 @@ impl<'a> From<Bson> for Wrap<AnyValue<'a>> {
                 let s = Series::new("", &b.bytes);
                 AnyValue::List(s)
             }
-            Bson::ObjectId(oid) => AnyValue::Utf8Owned(oid.to_string()),
-            Bson::Symbol(s) => AnyValue::Utf8Owned(s),
-            v => AnyValue::Utf8Owned(format!("{:#?}", v)),
+            Bson::ObjectId(oid) => AnyValue::Utf8Owned(oid.to_string().into()),
+            Bson::Symbol(s) => AnyValue::Utf8Owned(s.into()),
+            v => AnyValue::Utf8Owned(format!("{:#?}", v).into()),
         };
         Wrap(dt)
     }
@@ -105,7 +105,7 @@ impl<'a, 'b> From<&'b Bson> for Wrap<AnyValue<'a>> {
     fn from(bson: &'b Bson) -> Self {
         let dt = match bson {
             Bson::Double(v) => AnyValue::Float64(*v),
-            Bson::String(v) => AnyValue::Utf8Owned(v.clone()),
+            Bson::String(v) => AnyValue::Utf8Owned(v.into()),
             Bson::Array(arr) => {
                 let vals: Vec<Wrap<AnyValue>> = arr.iter().map(|v| v.into()).collect();
                 // Wrap is transparent, so this is safe
@@ -117,7 +117,7 @@ impl<'a, 'b> From<&'b Bson> for Wrap<AnyValue<'a>> {
             Bson::Null | Bson::Undefined => AnyValue::Null,
             Bson::Int32(v) => AnyValue::Int32(*v),
             Bson::Int64(v) => AnyValue::Int64(*v),
-            Bson::Timestamp(v) => AnyValue::Utf8Owned(format!("{:#?}", v)),
+            Bson::Timestamp(v) => AnyValue::Utf8Owned(format!("{:#?}", v).into()),
             Bson::Binary(b) => {
                 let s = Series::new("", &b.bytes);
                 AnyValue::List(s)
@@ -138,9 +138,9 @@ impl<'a, 'b> From<&'b Bson> for Wrap<AnyValue<'a>> {
 
                 AnyValue::StructOwned(Box::new(vals))
             }
-            Bson::ObjectId(oid) => AnyValue::Utf8Owned(oid.to_string()),
-            Bson::Symbol(s) => AnyValue::Utf8Owned(s.to_string()),
-            v => AnyValue::Utf8Owned(format!("{:#?}", v)),
+            Bson::ObjectId(oid) => AnyValue::Utf8Owned(oid.to_string().into()),
+            Bson::Symbol(s) => AnyValue::Utf8Owned(s.into()),
+            v => AnyValue::Utf8Owned(format!("{:#?}", v).into()),
         };
         Wrap(dt)
     }

@@ -24,6 +24,7 @@
 //! }
 //!
 #![deny(clippy::all)]
+
 #[cfg(feature = "serde")]
 use serde::{Deserialize, Serialize};
 mod buffer;
@@ -36,6 +37,7 @@ use conversion::Wrap;
 use polars::export::rayon::prelude::*;
 use polars::{frame::row::*, prelude::*};
 use polars_core::POOL;
+use polars_plan::logical_plan::AnonymousScanArgs;
 
 use mongodb::{
     bson::{Bson, Document},
@@ -51,14 +53,14 @@ pub struct MongoScan {
     pub collection: Option<Collection<Document>>,
     pub n_threads: Option<usize>,
     pub batch_size: Option<usize>,
-    pub rechunk: bool,
 }
 
 impl MongoScan {
-    pub fn with_rechunk(mut self, rechunk: bool) -> Self {
-        self.rechunk = rechunk;
+    #[deprecated]
+    pub fn with_rechunk(self, _rechunk: bool) -> Self {
         self
     }
+
     pub fn with_batch_size(mut self, batch_size: Option<usize>) -> Self {
         self.batch_size = batch_size;
         self
@@ -75,7 +77,6 @@ impl MongoScan {
             collection_name: collection,
             collection: None,
             n_threads: None,
-            rechunk: false,
             batch_size: None,
         })
     }
@@ -87,10 +88,10 @@ impl MongoScan {
         database.collection::<Document>(&self.collection_name)
     }
 
-    fn parse_lines<'a>(
+    fn parse_lines(
         &self,
         mut cursor: Cursor<Document>,
-        buffers: &mut PlIndexMap<String, Buffer<'a>>,
+        buffers: &mut PlIndexMap<String, Buffer<'_>>,
     ) -> mongodb::error::Result<()> {
         while let Some(Ok(doc)) = cursor.next() {
             buffers.iter_mut().for_each(|(s, inner)| match doc.get(s) {
@@ -103,7 +104,7 @@ impl MongoScan {
 }
 
 impl AnonymousScan for MongoScan {
-    fn scan(&self, scan_opts: AnonymousScanOptions) -> PolarsResult<DataFrame> {
+    fn scan(&self, scan_opts: AnonymousScanArgs) -> PolarsResult<DataFrame> {
         let collection = &self.get_collection();
 
         let projection = scan_opts.output_schema.clone().map(|schema| {
@@ -111,7 +112,7 @@ impl AnonymousScan for MongoScan {
                 .iter_names()
                 .map(|name| (name.clone(), Bson::Int64(1)));
 
-            Document::from_iter(prj)
+            Document::from_iter(prj.into_iter().map(|(k, v)| (k.to_string(), v)))
         });
 
         let mut find_options = FindOptions::default();
@@ -158,15 +159,13 @@ impl AnonymousScan for MongoScan {
                 })
                 .collect::<PolarsResult<Vec<_>>>()
         })?;
-        let mut df = accumulate_dataframes_vertical(dfs)?;
 
-        if self.rechunk {
-            df.rechunk();
-        }
+        let df = accumulate_dataframes_vertical(dfs)?;
+
         Ok(df)
     }
 
-    fn schema(&self, infer_schema_length: Option<usize>) -> PolarsResult<Schema> {
+    fn schema(&self, infer_schema_length: Option<usize>) -> PolarsResult<Arc<Schema>> {
         let collection = self.get_collection();
 
         let infer_options = FindOptions::builder()
@@ -186,7 +185,7 @@ impl AnonymousScan for MongoScan {
                 .collect()
         });
         let schema = infer_schema(iter, infer_schema_length.unwrap_or(100));
-        Ok(schema)
+        Ok(Arc::new(schema))
     }
 
     fn allows_predicate_pushdown(&self) -> bool {
@@ -197,6 +196,10 @@ impl AnonymousScan for MongoScan {
     }
     fn allows_slice_pushdown(&self) -> bool {
         true
+    }
+
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
     }
 }
 

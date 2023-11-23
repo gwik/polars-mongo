@@ -1,6 +1,6 @@
 [package]
 name = "polars-mongo"
-version = "0.2.0"
+version = "0.3.0"
 edition = "2021"
 authors = ["universalmind303 <cory.grinstead@gmail.com>"]
 license = "MIT"
@@ -11,24 +11,21 @@ repository = "https://github.com/universalmind303/polars-mongo/"
 [lib]
 crate-type = ["lib"]
 
-
 [dependencies]
-num = "^0.4"
-polars-time = "0.24.0"
-polars-core = "0.24.0"
-serde = {version = "1.0.137", features = ["derive", "rc"], optional = true}
+num = "0.4"
+polars-time = "0.35"
+polars-core = "0.35"
+polars-plan = "0.35"
+serde = {version = "1", features = ["derive", "rc"], optional = true}
 
 [dependencies.mongodb]
-version = "2.2.1"
+version = "2.7"
 default-features = false
 features = ["sync"]
 
-
 [dependencies.polars]
-version = "0.24.0"
+version = "0.35"
 features = ["lazy", "dtype-full"]
-
-
 
 [profile.release]
 lto = "fat"
